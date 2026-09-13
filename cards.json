@@ -1,0 +1,447 @@
+[
+  {
+    "CardId": "1",
+    "German": "Ich kenne ihn schon seit vier Jahren.",
+    "English": "I've known him for four years.",
+    "Alternative1": "I've known him for four years now.",
+    "Alternative2": "I've been friends with him for four years.",
+    "tags": [
+      "grammar",
+      "present-perfect"
+    ]
+  },
+  {
+    "CardId": "2",
+    "German": "Mein Kaffee ist ausgegangen, also bin ich zum Supermarkt gefahren.",
+    "English": "I ran out of coffee, so I went to the supermarket.",
+    "Alternative1": "My coffee ran out, so I went to the store.",
+    "Alternative2": "I was out of coffee, so I hit the supermarket.",
+    "tags": [
+      "collocation",
+      "natural-expression"
+    ]
+  },
+  {
+    "CardId": "3",
+    "German": "Ich kann meine Medikamente heute Nachmittag in der Apotheke abholen.",
+    "English": "I can pick up my medication from the pharmacy this afternoon.",
+    "Alternative1": "I can grab my medication from the pharmacy this afternoon.",
+    "Alternative2": "I'll pick up my meds at the pharmacy later.",
+    "tags": [
+      "phrasal-verb",
+      "vocabulary"
+    ]
+  },
+  {
+    "CardId": "4",
+    "German": "Ich hatte einfach keine Lust mehr, weiterzumachen.",
+    "English": "I just didn't feel like continuing.",
+    "Alternative1": "I just couldn't be bothered to keep going.",
+    "Alternative2": "I lost the motivation to keep going.",
+    "tags": [
+      "natural-expression",
+      "sentence-pattern"
+    ]
+  },
+  {
+    "CardId": "5",
+    "German": "Wer sagt mir denn, dass ich nicht am Ende arbeitslos werde?",
+    "English": "Who's to say I won't end up unemployed?",
+    "Alternative1": "There's no guarantee I won't end up jobless.",
+    "Alternative2": "Who knows, maybe I'll end up unemployed.",
+    "tags": [
+      "natural-expression",
+      "sentence-pattern"
+    ]
+  },
+  {
+    "CardId": "6",
+    "German": "Ich habe verschlafen, deshalb habe ich meinen Termin abgesagt.",
+    "English": "I overslept, so I cancelled my appointment.",
+    "Alternative1": "I slept through my alarm, so I had to cancel.",
+    "Alternative2": "I overslept and missed my appointment.",
+    "tags": [
+      "vocabulary"
+    ]
+  },
+  {
+    "CardId": "7",
+    "German": "Mein Freund heult sich bei mir immer aus, wenn er frustriert ist.",
+    "English": "My friend always vents to me when he's frustrated.",
+    "Alternative1": "He always complains to me when things get frustrating.",
+    "Alternative2": "He's always venting to me about his problems.",
+    "tags": [
+      "natural-expression",
+      "phrasal-verb"
+    ]
+  },
+  {
+    "CardId": "8",
+    "German": "Im besten Fall bräuchte die Firma höchstens einen Mitarbeiter dafür.",
+    "English": "At most, the company would only need one employee for that.",
+    "Alternative1": "The company would need one employee at most.",
+    "Alternative2": "They'd only need one person max for that.",
+    "tags": [
+      "collocation",
+      "word-choice"
+    ]
+  },
+  {
+    "CardId": "9",
+    "German": "Ehrlich gesagt bin ich mir nicht sicher.",
+    "English": "To be honest, I'm not sure.",
+    "Alternative1": "Honestly, I'm not sure.",
+    "Alternative2": "To be fair, I'm not really sure.",
+    "tags": [
+      "sentence-starter",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "10",
+    "German": "Normalerweise stehe ich früh auf.",
+    "English": "Usually, I get up early.",
+    "Alternative1": "Normally, I wake up early.",
+    "Alternative2": "Most of the time, I get up early.",
+    "tags": [
+      "sentence-starter",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "11",
+    "German": "Im Grunde stimme ich dir zu.",
+    "English": "Basically, I agree with you.",
+    "Alternative1": "In general, I agree with you.",
+    "Alternative2": "For the most part, I agree with you.",
+    "tags": [
+      "sentence-starter",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "12",
+    "German": "Soweit ich weiß, ist alles erledigt.",
+    "English": "As far as I know, everything is done.",
+    "Alternative1": "As far as I know, it's all done.",
+    "Alternative2": "From what I know, everything's done.",
+    "tags": [
+      "sentence-starter",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "13",
+    "German": "Zum Glück hat alles geklappt.",
+    "English": "Luckily, everything worked out.",
+    "Alternative1": "Fortunately, everything worked out.",
+    "Alternative2": "Thankfully, it all worked out.",
+    "tags": [
+      "sentence-starter",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "14",
+    "German": "Andererseits verstehe ich seinen Standpunkt.",
+    "English": "On the other hand, I understand his point of view.",
+    "Alternative1": "On the other hand, I can see his point.",
+    "Alternative2": "Then again, I get where he's coming from.",
+    "tags": [
+      "sentence-starter",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "15",
+    "German": "Tatsächlich hatte ich recht.",
+    "English": "Actually, I was right.",
+    "Alternative1": "As it turns out, I was right.",
+    "Alternative2": "Turns out, I was right.",
+    "tags": [
+      "sentence-starter",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "16",
+    "German": "Übrigens habe ich ihn gestern gesehen.",
+    "English": "By the way, I saw him yesterday.",
+    "Alternative1": "By the way, I ran into him yesterday.",
+    "Alternative2": "Oh, by the way, I saw him yesterday.",
+    "tags": [
+      "sentence-starter",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "17",
+    "German": "Außerdem habe ich keine Zeit.",
+    "English": "Besides, I don't have time.",
+    "Alternative1": "Besides that, I don't have time.",
+    "Alternative2": "On top of that, I don't have time.",
+    "tags": [
+      "sentence-starter",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "18",
+    "German": "Am Ende war es gar nicht so schlimm.",
+    "English": "In the end, it wasn't that bad.",
+    "Alternative1": "In the end, it turned out fine.",
+    "Alternative2": "After all, it wasn't that bad.",
+    "tags": [
+      "sentence-starter",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "20",
+    "German": "Ich fühle mich geschmeichelt.",
+    "English": "I'm flattered.",
+    "Alternative1": "I feel flattered.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "b2",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "21",
+    "German": "Du siehst frustriert aus.",
+    "English": "You look frustrated.",
+    "Alternative1": "You seem frustrated.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "b2",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "22",
+    "German": "Ich bin erleichtert, dass es vorbei ist.",
+    "English": "I'm relieved that it's over.",
+    "Alternative1": "I'm glad it's finally over.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "b2",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "23",
+    "German": "Sie wirkt ziemlich erschöpft.",
+    "English": "She looks exhausted.",
+    "Alternative1": "She seems exhausted.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "b2",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "24",
+    "German": "Ich bin ziemlich enttäuscht.",
+    "English": "I'm quite disappointed.",
+    "Alternative1": "I'm really disappointed.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "b2",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "25",
+    "German": "Das ist wirklich peinlich.",
+    "English": "That's really embarrassing.",
+    "Alternative1": "That's pretty embarrassing.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "b2",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "26",
+    "German": "Ich bin etwas skeptisch.",
+    "English": "I'm a bit skeptical.",
+    "Alternative1": "I'm somewhat skeptical.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "b2",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "27",
+    "German": "Ich bin zuversichtlich.",
+    "English": "I'm confident.",
+    "Alternative1": "I feel confident.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "b2",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "28",
+    "German": "Das klingt vernünftig.",
+    "English": "That sounds reasonable.",
+    "Alternative1": "That seems reasonable.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "b2",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "29",
+    "German": "Das ist ziemlich beeindruckend.",
+    "English": "That's quite impressive.",
+    "Alternative1": "That's really impressive.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "b2",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "30",
+    "German": "Ich bin davon überzeugt.",
+    "English": "I'm convinced.",
+    "Alternative1": "I'm fully convinced.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "c1",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "31",
+    "German": "Er ist unglaublich stur.",
+    "English": "He's incredibly stubborn.",
+    "Alternative1": "He's extremely stubborn.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "c1",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "32",
+    "German": "Sie war völlig verblüfft.",
+    "English": "She was absolutely astonished.",
+    "Alternative1": "She was completely astonished.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "c1",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "33",
+    "German": "Ich bin neugierig darauf.",
+    "English": "I'm curious about it.",
+    "Alternative1": "I'm genuinely curious about it.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "b2",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "34",
+    "German": "Das kommt mir verdächtig vor.",
+    "English": "That seems suspicious to me.",
+    "Alternative1": "That looks suspicious to me.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "b2",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "35",
+    "German": "Ich bin davon fasziniert.",
+    "English": "I'm fascinated by it.",
+    "Alternative1": "I find it fascinating.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "c1",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "36",
+    "German": "Das ist völlig absurd.",
+    "English": "That's absolutely absurd.",
+    "Alternative1": "That's completely absurd.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "c1",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "37",
+    "German": "Ich bin dafür dankbar.",
+    "English": "I'm grateful for that.",
+    "Alternative1": "I'm really grateful for it.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "b2",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "38",
+    "German": "Er ist erstaunlich bescheiden.",
+    "English": "He's remarkably humble.",
+    "Alternative1": "He's surprisingly humble.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "c1",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "39",
+    "German": "Das ist äußerst fragwürdig.",
+    "English": "That's highly questionable.",
+    "Alternative1": "That's rather questionable.",
+    "Alternative2": "",
+    "tags": [
+      "adjective",
+      "c1",
+      "speaking"
+    ]
+  },
+  {
+    "CardId": "40",
+    "German": "eded.",
+    "English": "eddeded.",
+    "Alternative1": "",
+    "Alternative2": "",
+    "tags": []
+  }
+]
