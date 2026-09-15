@@ -14,14 +14,37 @@ from typing import Optional
 # Verzeichnisse
 # ---------------------------------------------------------------------------
 
-if getattr(sys, "frozen", False):
-    # Eingefroren als EXE (PyInstaller)
-    PROJECT_DIR = Path(sys.executable).resolve().parent  # type: Path
-else:
-    PROJECT_DIR = Path(__file__).resolve().parent  # type: Path
+import shutil
 
-CARDS_FILE = PROJECT_DIR / "cards.json"  # type: Path
-BACKUP_DIR = PROJECT_DIR / "backups"  # type: Path
+_SCRIPT_DIR = Path(__file__).resolve().parent
+
+if sys.platform == "darwin":
+    DATA_DIR = Path.home() / "Library" / "Application Support" / "AnkiEnglishManager"
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception as exc:
+        raise RuntimeError(f"Datenordner konnte nicht erstellt werden: {DATA_DIR}\n{exc}") from exc
+
+    # Einmalige Migration bei Ausführung aus den Sourcen
+    if not getattr(sys, "frozen", False):
+        if not (DATA_DIR / "config.json").exists() and not (DATA_DIR / "cards.json").exists():
+            _migrated = False
+            for _fname in ("config.json", "cards.json"):
+                _src = _SCRIPT_DIR / _fname
+                if _src.exists():
+                    shutil.copy2(_src, DATA_DIR / _fname)
+                    _migrated = True
+            if _migrated:
+                print(f"INFO: Daten wurden von '{_SCRIPT_DIR}' nach '{DATA_DIR}' kopiert.")
+else:
+    if getattr(sys, "frozen", False):
+        # Eingefroren als EXE (PyInstaller)
+        DATA_DIR = Path(sys.executable).resolve().parent
+    else:
+        DATA_DIR = _SCRIPT_DIR
+
+CARDS_FILE = DATA_DIR / "cards.json"  # type: Path
+BACKUP_DIR = DATA_DIR / "backups"  # type: Path
 
 # ---------------------------------------------------------------------------
 # Standardwerte
@@ -35,7 +58,7 @@ _DEFAULTS = {
     "max_auto_delete": 3,
 }
 
-_CONFIG_FILE: Path = PROJECT_DIR / "config.json"
+_CONFIG_FILE: Path = DATA_DIR / "config.json"
 
 # ---------------------------------------------------------------------------
 # config.json laden oder erstellen

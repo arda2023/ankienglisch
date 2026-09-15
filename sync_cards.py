@@ -23,6 +23,7 @@ from anki_client import (
     deck_query,
     find_notes_info,
     invoke_anki,
+    model_query,
     notes_info_by_ids,
     preflight_check,
 )
@@ -225,6 +226,16 @@ def plan_sync() -> SyncPlan:
     # 4. Vorhandene Anki-Notizen laden
     anki_notes = find_notes_info(deck_query())
 
+    # 4b. Alle Notizen des Note-Types laden (für Duplikaterkennung außerhalb des Decks)
+    all_model_notes = find_notes_info(model_query())
+    outside_deck_notes: dict = {}  # card_id_str -> note_id
+    deck_note_ids = {n["noteId"] for n in anki_notes}
+    for n in all_model_notes:
+        if n["noteId"] not in deck_note_ids:
+            raw_cid = n["fields"].get(CARD_ID_FIELD, {}).get("value", "").strip()
+            if raw_cid and raw_cid.isdigit():
+                outside_deck_notes[raw_cid] = n["noteId"]
+
     # Index aufbauen; Duplikate und leere CardIds separat behandeln
     anki_index: dict = {}   # card_id_str -> note-dict
     anki_dupes: dict = {}   # card_id_str -> [note_ids]
@@ -280,7 +291,14 @@ def plan_sync() -> SyncPlan:
         card_id = card[CARD_ID_FIELD]
 
         if card_id not in anki_index:
-            plan.to_add.append(AddEntry(card=card))
+            if card_id in outside_deck_notes:
+                plan.blocking_errors.append(
+                    f"CardId {card_id} existiert bereits außerhalb des Decks '{DECK_NAME}' "
+                    f"(Notiz {outside_deck_notes[card_id]}). Bitte die Karte in Anki "
+                    f"zurückverschieben oder aus cards.json entfernen."
+                )
+            else:
+                plan.to_add.append(AddEntry(card=card))
             continue
 
         note = anki_index[card_id]
@@ -442,9 +460,12 @@ def apply_sync(plan: SyncPlan) -> None:
     deleted = 0
     if error_count > 0 or verify_errors > 0:
         if plan.to_delete:
+            reason = "Fehler beim Hinzufügen/Aktualisieren aufgetreten sind"
+            if verify_errors > 0 and error_count == 0:
+                reason = "das Speichern (Verifikation) fehlgeschlagen ist"
             print(
                 f"Löschen übersprungen ({len(plan.to_delete)} Notiz(en)), "
-                "da beim Hinzufügen/Aktualisieren Fehler aufgetreten sind."
+                f"da {reason}."
             )
     else:
         ids_to_delete = [e.note_id for e in plan.to_delete]

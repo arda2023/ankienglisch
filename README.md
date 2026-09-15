@@ -1,11 +1,11 @@
 # Anki English Manager
 
-Windows-11-Desktop-App (CustomTkinter + PyInstaller) zum Verwalten von Anki-Vokabelkarten über AnkiConnect.
+Windows/macOS-Desktop-App (CustomTkinter + PyInstaller) zum Verwalten von Anki-Vokabelkarten über AnkiConnect.
 
 ## Voraussetzungen
 
-- Windows 11
-- Python 3.10 oder neuer
+- Windows 11 oder macOS
+- Python 3.10+ (Windows) oder Python 3.13 von python.org (macOS)
 - Anki muss laufen
 - AnkiConnect muss installiert und erreichbar sein
 
@@ -23,21 +23,36 @@ pip install -r requirements.txt
 python main.py
 ```
 
-## EXE bauen
+## EXE / App bauen
 
+**Windows:**
 ```bat
 build.bat
 ```
-
 Die fertige EXE liegt danach im Ordner `dist`.
+
+**macOS:**
+```bash
+chmod +x build_mac.sh
+./build_mac.sh
+```
+Die fertige App liegt in `dist/AnkiEnglishManager.app`.
+
+> **macOS App Nap & Gatekeeper:**
+> Damit AnkiConnect im Hintergrund antwortet, App Nap für Anki deaktivieren:
+> `defaults write net.ankiweb.dtop NSAppSleepDisabled -bool true`
+> 
+> Eine heruntergeladene oder kopierte `.app` muss unter macOS ggf. einmalig in den **Systemeinstellungen → Datenschutz & Sicherheit** mit „Dennoch öffnen“ autorisiert werden.
 
 ---
 
 ## Konfiguration — config.json
 
-`config.json` liegt im selben Ordner wie die EXE (bzw. das Skript). Fehlende
-Schlüssel werden beim Start automatisch mit Standardwerten ergänzt. Wenn die
-Datei fehlt, wird sie neu erstellt.
+`config.json` und `cards.json` liegen im Datenordner:
+- **Windows:** Im selben Ordner wie die EXE (bzw. das Skript).
+- **macOS:** `~/Library/Application Support/AnkiEnglishManager`
+
+Fehlende Schlüssel in der Konfiguration werden beim Start automatisch mit Standardwerten ergänzt. Wenn die Datei fehlt, wird sie neu erstellt.
 
 | Schlüssel | Typ | Standardwert | Bedeutung |
 |---|---|---|---|
@@ -79,4 +94,4 @@ behalten; ältere werden gelöscht. Der Ordner wird von Git ignoriert.
 | **Export & JSON in Zwischenablage kopieren** | Wie Export, kopiert `cards.json` danach zusätzlich in die Zwischenablage. |
 | **Synchronisieren** | Gleicht `cards.json` mit Anki ab. |
 | **cards.json öffnen** | Öffnet `cards.json` mit dem Standard-Editor. |
-| **Projektordner öffnen** | Öffnet den Projektordner im Explorer. |
+| **Datenordner öffnen** | Öffnet den Datenordner (mit config.json, cards.json und backups) im Datei-Explorer/Finder. |

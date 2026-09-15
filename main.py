@@ -1,14 +1,21 @@
 import contextlib
 import io
 import os
+import queue
+import sys
 import threading
 import tkinter
 import tkinter.messagebox
 import traceback
 
+if sys.platform == "darwin":
+    os.environ.setdefault("LANG", "en_US.UTF-8")
+
 import customtkinter as ctk
 import pyperclip
 import requests
+
+from platform_utils import open_path
 
 
 # ---------------------------------------------------------------------------
@@ -20,7 +27,7 @@ try:
     import import_cards as import_cards_module
     import sync_cards as sync_cards_module
 
-    from config import CARDS_FILE, MAX_AUTO_DELETE, PROJECT_DIR
+    from config import CARDS_FILE, MAX_AUTO_DELETE, DATA_DIR
 except Exception as _startup_exc:  # noqa: BLE001
     _root = tkinter.Tk()
     _root.withdraw()
@@ -61,12 +68,25 @@ class AnkiEnglishManagerApp(ctk.CTk):
         )
         self.add_button("Synchronisieren", self.sync_cards, 1, 1)
         self.add_button("cards.json öffnen", self.open_cards_json, 2, 0)
-        self.add_button("Projektordner öffnen", self.open_project_folder, 2, 1)
+        self.add_button("Datenordner öffnen", self.open_data_folder, 2, 1)
 
         self.status_box = ctk.CTkTextbox(self, wrap="word")
         self.status_box.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 12))
-        self.status_box.insert("end", "Bereit.\n")
+        
+        self.queue = queue.Queue()
+        self.after(100, self._process_queue)
+        
+        self.status_box.insert("end", f"Datenordner: {DATA_DIR}\nBereit.\n")
         self.status_box.configure(state="disabled")
+
+    def _process_queue(self):
+        while not self.queue.empty():
+            try:
+                task = self.queue.get_nowait()
+                task()
+            except queue.Empty:
+                break
+        self.after(100, self._process_queue)
 
     def add_button(self, text, command, row, column):
         button = ctk.CTkButton(self.button_frame, text=text, command=command)
@@ -102,7 +122,7 @@ class AnkiEnglishManagerApp(ctk.CTk):
             if not text.strip():
                 text = "Fertig.\n"
 
-            self.after(0, lambda: self.finish_task(text))
+            self.queue.put(lambda text=text: self.finish_task(text))
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -161,9 +181,7 @@ class AnkiEnglishManagerApp(ctk.CTk):
 
             captured_plan = plan
             captured_text = output.getvalue()
-            self.after(
-                0, lambda: self._on_plan_ready(captured_plan, captured_text)
-            )
+            self.queue.put(lambda cp=captured_plan, ct=captured_text: self._on_plan_ready(cp, ct))
 
         threading.Thread(target=phase1_worker, daemon=True).start()
 
@@ -274,7 +292,7 @@ class AnkiEnglishManagerApp(ctk.CTk):
             text = output.getvalue()
             if not text.strip():
                 text = "Fertig.\n"
-            self.after(0, lambda: self.finish_task(text))
+            self.queue.put(lambda text=text: self.finish_task(text))
 
         threading.Thread(target=worker, daemon=True).start()
 
@@ -286,12 +304,18 @@ class AnkiEnglishManagerApp(ctk.CTk):
         if not CARDS_FILE.exists():
             self.append_status("\ncards.json wurde nicht gefunden.\n")
             return
-        os.startfile(CARDS_FILE)
-        self.append_status("\ncards.json geöffnet.\n")
+        try:
+            open_path(CARDS_FILE)
+            self.append_status("\ncards.json geöffnet.\n")
+        except Exception as exc:
+            self.append_status(f"\nFehler beim Öffnen: {exc}\n")
 
-    def open_project_folder(self):
-        os.startfile(PROJECT_DIR)
-        self.append_status("\nProjektordner geöffnet.\n")
+    def open_data_folder(self):
+        try:
+            open_path(DATA_DIR)
+            self.append_status("\nDatenordner geöffnet.\n")
+        except Exception as exc:
+            self.append_status(f"\nFehler beim Öffnen: {exc}\n")
 
 
 if __name__ == "__main__":

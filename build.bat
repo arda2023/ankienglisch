@@ -15,6 +15,7 @@ pyinstaller ^
   --onefile ^
   --windowed ^
   --name AnkiEnglishManager ^
+  --collect-data customtkinter ^
   main.py
 
 pause
