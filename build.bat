@@ -15,10 +15,6 @@ pyinstaller ^
   --onefile ^
   --windowed ^
   --name AnkiEnglishManager ^
-  --add-data "config.py;." ^
-  --add-data "import_cards.py;." ^
-  --add-data "export_cards.py;." ^
-  --add-data "sync_cards.py;." ^
   main.py
 
 pause

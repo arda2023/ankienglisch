@@ -1,42 +1,66 @@
+"""
+import_cards.py — Import von Karten aus der Zwischenablage nach Anki.
+
+Liest ein JSON-Array aus der Zwischenablage (toleriert Markdown-Codefences
+und Text drumherum), validiert alle Karten, überspringt Duplikate (Vergleich
+über eine normalisierte German-Kennung) und vergibt neue CardIds. Erfolgreich
+importierte Karten werden an cards.json angehängt, damit ein späterer Sync
+sie nicht wegen einer veralteten Datei löscht.
+"""
+
 import json
+import re
 
 import pyperclip
 import requests
 
+from anki_client import deck_query, find_notes_info, invoke_anki, model_query, preflight_check
+from cards_file import load_cards, normalize_tags, normalize_text, save_cards
 from config import DECK_NAME, MODEL_NAME
 
-
-ANKI_CONNECT_URL = "http://localhost:8765"
-REQUIRED_FIELDS = ["German", "English"]
-OPTIONAL_FIELDS = ["Alternative1", "Alternative2"]
-NOTE_FIELDS = REQUIRED_FIELDS + OPTIONAL_FIELDS
 CARD_ID_FIELD = "CardId"
+EXPORT_TEXT_FIELDS = ["German", "English", "Alternative1", "Alternative2"]
+
+_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL | re.IGNORECASE)
+_TAG_RE = re.compile(r"<[^>]+>")
+_TRAILING_PUNCT_RE = re.compile(r"[.,;:!?…]+$")
 
 
-def invoke_anki(action, params):
-    payload = {
-        "action": action,
-        "version": 6,
-        "params": params,
-    }
+# ---------------------------------------------------------------------------
+# Zwischenablage lesen
+# ---------------------------------------------------------------------------
 
-    response = requests.post(ANKI_CONNECT_URL, json=payload, timeout=10)
-    response.raise_for_status()
 
-    data = response.json()
-    if data.get("error"):
-        raise RuntimeError(f"AnkiConnect error: {data['error']}")
+def extract_json_text(clipboard_content):
+    """Extrahiert den JSON-Teil aus dem Zwischenablage-Inhalt.
 
-    return data.get("result")
+    Bevorzugt den Inhalt eines ```json-Codefences; ansonsten wird der
+    Bereich vom ersten '[' bis zum letzten ']' verwendet.
+    """
+    fence_match = _FENCE_RE.search(clipboard_content)
+    if fence_match:
+        return fence_match.group(1).strip()
+
+    start = clipboard_content.find("[")
+    end = clipboard_content.rfind("]")
+    if start == -1 or end == -1 or end < start:
+        raise ValueError(
+            "In der Zwischenablage wurde kein JSON-Array gefunden. "
+            "Erwartet wird entweder ein ```json ... ```-Codeblock oder "
+            "ein Array in eckigen Klammern [ ... ]."
+        )
+    return clipboard_content[start : end + 1]
 
 
 def load_cards_from_clipboard():
     clipboard_content = pyperclip.paste()
-    if not clipboard_content.strip():
+    if not clipboard_content or not clipboard_content.strip():
         raise ValueError("Zwischenablage ist leer.")
 
+    json_text = extract_json_text(clipboard_content)
+
     try:
-        cards = json.loads(clipboard_content)
+        cards = json.loads(json_text)
     except json.JSONDecodeError as exc:
         raise ValueError(f"Zwischenablage enthält kein gültiges JSON: {exc}") from exc
 
@@ -46,78 +70,235 @@ def load_cards_from_clipboard():
     return cards
 
 
-def get_highest_card_id():
-    note_ids = invoke_anki(
-        "findNotes",
-        {"query": f'deck:"{DECK_NAME}" note:"{MODEL_NAME}"'},
-    )
-    if not note_ids:
-        return 0
-
-    notes = invoke_anki("notesInfo", {"notes": note_ids})
-    highest_id = 0
-
-    for note in notes:
-        card_id_value = note["fields"].get(CARD_ID_FIELD, {}).get("value", "").strip()
-        if card_id_value.isdigit():
-            highest_id = max(highest_id, int(card_id_value))
-
-    return highest_id
+# ---------------------------------------------------------------------------
+# Validierung
+# ---------------------------------------------------------------------------
 
 
-def build_note(card, card_id):
+def validate_and_normalize_card(card, index):
+    """Validiert eine einzelne Karte und gibt normalisierte Felder zurück.
+
+    Wirft ValueError mit einer Meldung, die den Karten-Index nennt.
+    Eine im JSON enthaltene CardId wird bewusst ignoriert — IDs vergibt
+    ausschließlich die App.
+    """
     if not isinstance(card, dict):
-        raise ValueError("Jede Karte muss ein JSON-Objekt sein.")
+        raise ValueError(f"Karte {index}: muss ein JSON-Objekt sein.")
 
-    missing_fields = [field for field in REQUIRED_FIELDS if field not in card]
-    if missing_fields:
-        missing = ", ".join(missing_fields)
-        raise ValueError(f"Pflichtfelder fehlen: {missing}")
+    try:
+        german = normalize_text(card.get("German"))
+    except ValueError as exc:
+        raise ValueError(f"Karte {index}: German ist ungültig ({exc}).") from exc
+    if not german:
+        raise ValueError(f"Karte {index}: German ist leer.")
 
-    fields = {field: str(card.get(field, "")) for field in NOTE_FIELDS}
-    fields[CARD_ID_FIELD] = str(card_id)
-    tags = card.get("tags", [])
+    try:
+        english = normalize_text(card.get("English"))
+    except ValueError as exc:
+        raise ValueError(f"Karte {index}: English ist ungültig ({exc}).") from exc
+    if not english:
+        raise ValueError(f"Karte {index}: English ist leer.")
 
-    if tags is None:
-        tags = []
-    if not isinstance(tags, list):
-        raise ValueError("Optionales Feld 'tags' muss eine Liste sein.")
+    try:
+        alternative1 = normalize_text(card.get("Alternative1"))
+    except ValueError as exc:
+        raise ValueError(f"Karte {index}: Alternative1 ist ungültig ({exc}).") from exc
+
+    try:
+        alternative2 = normalize_text(card.get("Alternative2"))
+    except ValueError as exc:
+        raise ValueError(f"Karte {index}: Alternative2 ist ungültig ({exc}).") from exc
+
+    try:
+        tags = normalize_tags(card.get("tags"))
+    except ValueError as exc:
+        raise ValueError(f"Karte {index}: tags ist ungültig ({exc}).") from exc
 
     return {
-        "deckName": DECK_NAME,
-        "modelName": MODEL_NAME,
-        "fields": fields,
-        "tags": [str(tag) for tag in tags],
+        "German": german,
+        "English": english,
+        "Alternative1": alternative1,
+        "Alternative2": alternative2,
+        "tags": tags,
     }
 
 
-def import_cards():
-    cards = load_cards_from_clipboard()
-    success_count = 0
-    skipped_duplicates = 0
-    error_count = 0
-    next_card_id = get_highest_card_id() + 1
+def validate_cards(cards):
+    """Validiert alle Karten. Bei mindestens einem Problem wird der gesamte
+    Import mit allen gefundenen Problemen abgebrochen (keine Teilimporte)."""
+    problems = []
+    normalized = []
 
     for index, card in enumerate(cards, start=1):
         try:
-            note = build_note(card, next_card_id)
+            normalized.append(validate_and_normalize_card(card, index))
+        except ValueError as exc:
+            problems.append(str(exc))
+
+    if problems:
+        raise ValueError(
+            "Import abgebrochen — folgende Probleme wurden gefunden:\n"
+            + "\n".join(problems)
+        )
+
+    return normalized
+
+
+# ---------------------------------------------------------------------------
+# Duplikaterkennung
+# ---------------------------------------------------------------------------
+
+
+def normalize_german_key(text):
+    """Normalisiert einen German-Wert zu einer Vergleichs-Kennung.
+
+    HTML-Tags entfernen, &nbsp; zu Leerzeichen, kleinschreiben, Whitespace
+    zusammenfassen, abschließende Satzzeichen entfernen.
+    """
+    text = _TAG_RE.sub("", text)
+    text = text.replace("&nbsp;", " ")
+    text = text.lower()
+    text = re.sub(r"\s+", " ", text).strip()
+    text = _TRAILING_PUNCT_RE.sub("", text).strip()
+    return text
+
+
+def build_existing_german_keys():
+    """Normalisierte German-Kennungen aller vorhandenen Notizen im Deck."""
+    notes = find_notes_info(deck_query())
+    keys = set()
+    for note in notes:
+        value = note["fields"].get("German", {}).get("value", "")
+        key = normalize_german_key(value)
+        if key:
+            keys.add(key)
+    return keys
+
+
+# ---------------------------------------------------------------------------
+# CardId-Vergabe
+# ---------------------------------------------------------------------------
+
+
+def get_highest_card_id_in_anki():
+    """Höchste numerische CardId unter allen Notizen dieses Note-Types in der
+    gesamten Sammlung (nicht nur im konfigurierten Deck)."""
+    notes = find_notes_info(model_query())
+    highest = 0
+    for note in notes:
+        value = note["fields"].get(CARD_ID_FIELD, {}).get("value", "").strip()
+        if value.isdigit():
+            highest = max(highest, int(value))
+    return highest
+
+
+def get_highest_card_id_in_file():
+    """Höchste numerische CardId in cards.json, oder 0 wenn die Datei fehlt."""
+    try:
+        cards = load_cards()
+    except FileNotFoundError:
+        return 0
+
+    highest = 0
+    for card in cards:
+        value = str(card.get(CARD_ID_FIELD, "")).strip()
+        if value.isdigit():
+            highest = max(highest, int(value))
+    return highest
+
+
+# ---------------------------------------------------------------------------
+# Import
+# ---------------------------------------------------------------------------
+
+
+def import_cards():
+    preflight_check()
+
+    raw_cards = load_cards_from_clipboard()
+    if not raw_cards:
+        print("Die Zwischenablage enthält keine Karten.")
+        return
+
+    normalized_cards = validate_cards(raw_cards)
+
+    existing_keys = build_existing_german_keys()
+    seen_batch_keys = set()
+
+    to_import = []
+    skipped = []
+    for card in normalized_cards:
+        key = normalize_german_key(card["German"])
+        if key in existing_keys or key in seen_batch_keys:
+            skipped.append(card["German"])
+            continue
+        seen_batch_keys.add(key)
+        to_import.append(card)
+
+    next_card_id = max(get_highest_card_id_in_anki(), get_highest_card_id_in_file()) + 1
+    first_card_id = next_card_id
+
+    imported_cards = []
+    error_count = 0
+
+    for card in to_import:
+        note = {
+            "deckName": DECK_NAME,
+            "modelName": MODEL_NAME,
+            "fields": {
+                CARD_ID_FIELD: str(next_card_id),
+                "German": card["German"],
+                "English": card["English"],
+                "Alternative1": card["Alternative1"],
+                "Alternative2": card["Alternative2"],
+            },
+            "tags": card["tags"],
+            "options": {"allowDuplicate": True},
+        }
+
+        try:
             result = invoke_anki("addNote", {"note": note})
             if result is None:
                 raise RuntimeError("AnkiConnect hat keine Notiz-ID zurückgegeben.")
-            success_count += 1
-            next_card_id += 1
         except Exception as exc:
-            error_message = str(exc)
-            if "duplicate" in error_message.lower():
-                skipped_duplicates += 1
-                continue
-
             error_count += 1
-            print(f"Karte {index} konnte nicht importiert werden: {exc}")
+            print(
+                f"Karte '{card['German']}' (CardId {next_card_id}) "
+                f"konnte nicht importiert werden: {exc}"
+            )
+            continue
 
-    print(f"Erfolgreich importiert: {success_count}")
-    print(f"Übersprungen (Duplikate): {skipped_duplicates}")
+        imported_cards.append(
+            {
+                CARD_ID_FIELD: str(next_card_id),
+                "German": card["German"],
+                "English": card["English"],
+                "Alternative1": card["Alternative1"],
+                "Alternative2": card["Alternative2"],
+                "tags": card["tags"],
+            }
+        )
+        next_card_id += 1
+
+    for german in skipped:
+        print(f"Übersprungen (Duplikat): {german}")
+
+    if imported_cards:
+        try:
+            file_cards = load_cards()
+        except FileNotFoundError:
+            file_cards = []
+        file_cards.extend(imported_cards)
+        save_cards(file_cards)
+
+    print(f"Importiert: {len(imported_cards)}")
+    print(f"Übersprungen (Duplikate): {len(skipped)}")
     print(f"Fehler: {error_count}")
+    if imported_cards:
+        last_card_id = int(imported_cards[-1][CARD_ID_FIELD])
+        print(f"Vergebene CardIds: {first_card_id}–{last_card_id}")
+    else:
+        print("Vergebene CardIds: keine")
 
 
 def main():

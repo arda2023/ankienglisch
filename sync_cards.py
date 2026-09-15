@@ -1,36 +1,12 @@
-import json
-from pathlib import Path
-
 import requests
 
-from config import DECK_NAME, MODEL_NAME
+from anki_client import invoke_anki
+from config import CARDS_FILE, DECK_NAME, MODEL_NAME
 
-ANKI_CONNECT_URL = "http://localhost:8765"
-CARDS_FILE = Path(__file__).parent / "cards.json"
+import json
+
 CARD_ID_FIELD = "CardId"
 SYNC_FIELDS = ["German", "English", "Alternative1", "Alternative2"]
-
-
-def invoke_anki(action, params=None):
-    if params is None:
-        params = {}
-
-    response = requests.post(
-        ANKI_CONNECT_URL,
-        json={
-            "action": action,
-            "version": 6,
-            "params": params,
-        },
-        timeout=10,
-    )
-    response.raise_for_status()
-
-    data = response.json()
-    if data.get("error"):
-        raise RuntimeError(data["error"])
-
-    return data.get("result")
 
 
 def load_cards_from_file():

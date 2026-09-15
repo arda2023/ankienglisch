@@ -14,15 +14,7 @@ import export_cards as export_cards_module
 import import_cards as import_cards_module
 import sync_cards as sync_cards_module
 
-
-if getattr(sys, "frozen", False):
-    PROJECT_DIR = Path(sys.executable).resolve().parent
-else:
-    PROJECT_DIR = Path(__file__).resolve().parent
-
-CARDS_FILE = PROJECT_DIR / "cards.json"
-export_cards_module.OUTPUT_FILE = CARDS_FILE
-sync_cards_module.CARDS_FILE = CARDS_FILE
+from config import CARDS_FILE, PROJECT_DIR
 
 
 class AnkiEnglishManagerApp(ctk.CTk):

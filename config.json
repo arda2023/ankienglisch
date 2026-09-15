@@ -1,0 +1,7 @@
+{
+  "deck_name": "Englisch",
+  "model_name": "English Active Speaking",
+  "anki_connect_url": "http://localhost:8765",
+  "expected_profile": null,
+  "max_auto_delete": 3
+}
