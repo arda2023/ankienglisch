@@ -68,12 +68,14 @@ def save_cards(cards):
 
     Wenn CARDS_FILE bereits existiert, wird zuerst eine Sicherungskopie nach
     BACKUP_DIR angelegt. Es werden maximal _MAX_BACKUPS Backups behalten.
+    Backup-Dateinamen enthalten Mikrosekunden, damit zwei Saves innerhalb
+    derselben Sekunde eindeutige Namen erhalten.
     """
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
     # Backup der vorhandenen Datei
     if CARDS_FILE.exists():
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         backup_name = f"cards_{timestamp}.json"
         backup_path = BACKUP_DIR / backup_name
         shutil.copy2(CARDS_FILE, backup_path)
@@ -137,11 +139,19 @@ def normalize_text(value):
     )
 
 
+def is_protected_tag(tag: str) -> bool:
+    """Gibt True zurück, wenn *tag* (Groß-/Kleinschreibung ignoriert) ein
+    geschützter Tag ist."""
+    return tag.lower() in PROTECTED_TAGS
+
+
 def normalize_tags(tags):
     """Normalisiert eine Tag-Liste.
 
     - None        → []
-    - list[str]   → bereinigt (Strip, Leerzeichen → '-', leer entfernt, Duplikate entfernt)
+    - list        → bereinigt (Strip, Leerzeichen → '-', None-Einträge und
+                    leere Strings entfernt, Groß-/Kleinschreibungs-insensitive
+                    Deduplizierung; erste Schreibweise bleibt erhalten)
     - Non-list    → ValueError
     """
     if tags is None:
@@ -151,9 +161,12 @@ def normalize_tags(tags):
             f"'tags' muss eine Liste sein, nicht {type(tags).__name__}: {tags!r}"
         )
 
-    seen = set()  # type: set
+    seen_lower = set()  # type: set
     result = []  # type: List[str]
     for tag in tags:
+        if tag is None:
+            # None-Einträge stillschweigend überspringen
+            continue
         if not isinstance(tag, str):
             tag = str(tag)
         tag = tag.strip()
@@ -161,8 +174,9 @@ def normalize_tags(tags):
         tag = re.sub(r"\s+", "-", tag)
         if not tag:
             continue
-        if tag not in seen:
-            seen.add(tag)
+        tag_lower = tag.lower()
+        if tag_lower not in seen_lower:
+            seen_lower.add(tag_lower)
             result.append(tag)
 
     return result

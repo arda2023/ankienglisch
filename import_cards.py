@@ -8,8 +8,10 @@ importierte Karten werden an cards.json angehängt, damit ein späterer Sync
 sie nicht wegen einer veralteten Datei löscht.
 """
 
+import html
 import json
 import re
+import unicodedata
 
 import pyperclip
 import requests
@@ -21,7 +23,8 @@ from config import DECK_NAME, MODEL_NAME
 CARD_ID_FIELD = "CardId"
 EXPORT_TEXT_FIELDS = ["German", "English", "Alternative1", "Alternative2"]
 
-_FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL | re.IGNORECASE)
+# Matches any opening fence: ```<optional-tag>, captures content up to closing ```
+_FENCE_RE = re.compile(r"^```(\S*)\s*\n(.*?)^```", re.DOTALL | re.MULTILINE)
 _TAG_RE = re.compile(r"<[^>]+>")
 _TRAILING_PUNCT_RE = re.compile(r"[.,;:!?…]+$")
 
@@ -34,19 +37,26 @@ _TRAILING_PUNCT_RE = re.compile(r"[.,;:!?…]+$")
 def extract_json_text(clipboard_content):
     """Extrahiert den JSON-Teil aus dem Zwischenablage-Inhalt.
 
-    Bevorzugt den Inhalt eines ```json-Codefences; ansonsten wird der
+    Bevorzugt den ersten ```-Codeblock (beliebiger Sprachtag), dessen Inhalt
+    mit '[' beginnt. Wenn kein passender Fence-Block gefunden wird, wird der
     Bereich vom ersten '[' bis zum letzten ']' verwendet.
     """
-    fence_match = _FENCE_RE.search(clipboard_content)
-    if fence_match:
-        return fence_match.group(1).strip()
+    # Collect all fenced blocks; keep the first one starting with "["
+    first_fence_content = None
+    for m in _FENCE_RE.finditer(clipboard_content):
+        content = m.group(2).strip()
+        if content.startswith("["):
+            return content
+        if first_fence_content is None:
+            first_fence_content = content
 
+    # No fenced block starting with "[" found — fall back to first "[" … last "]"
     start = clipboard_content.find("[")
     end = clipboard_content.rfind("]")
     if start == -1 or end == -1 or end < start:
         raise ValueError(
             "In der Zwischenablage wurde kein JSON-Array gefunden. "
-            "Erwartet wird entweder ein ```json ... ```-Codeblock oder "
+            "Erwartet wird entweder ein ```…```-Codeblock oder "
             "ein Array in eckigen Klammern [ ... ]."
         )
     return clipboard_content[start : end + 1]
@@ -152,11 +162,20 @@ def validate_cards(cards):
 def normalize_german_key(text):
     """Normalisiert einen German-Wert zu einer Vergleichs-Kennung.
 
-    HTML-Tags entfernen, &nbsp; zu Leerzeichen, kleinschreiben, Whitespace
-    zusammenfassen, abschließende Satzzeichen entfernen.
+    Reihenfolge:
+    1. HTML-Tags entfernen
+    2. HTML-Entities dekodieren (z. B. &amp; → &)
+    3. Unicode NFC-Normalisierung
+    4. Kleinschreiben
+    5. Alle Whitespace-Varianten (inkl. geschütztem Leerzeichen \\xa0) zu
+       einem normalen Leerzeichen zusammenfassen
+    6. Strip
+    7. Abschließende Satzzeichen entfernen
+    8. Strip
     """
     text = _TAG_RE.sub("", text)
-    text = text.replace("&nbsp;", " ")
+    text = html.unescape(text)
+    text = unicodedata.normalize("NFC", text)
     text = text.lower()
     text = re.sub(r"\s+", " ", text).strip()
     text = _TRAILING_PUNCT_RE.sub("", text).strip()
@@ -283,15 +302,9 @@ def import_cards():
     for german in skipped:
         print(f"Übersprungen (Duplikat): {german}")
 
-    if imported_cards:
-        try:
-            file_cards = load_cards()
-        except FileNotFoundError:
-            file_cards = []
-        file_cards.extend(imported_cards)
-        save_cards(file_cards)
-
-    print(f"Importiert: {len(imported_cards)}")
+    # Summary (always printed, even when the cards.json update fails below)
+    imported_count = len(imported_cards)
+    print(f"Importiert: {imported_count}")
     print(f"Übersprungen (Duplikate): {len(skipped)}")
     print(f"Fehler: {error_count}")
     if imported_cards:
@@ -299,6 +312,26 @@ def import_cards():
         print(f"Vergebene CardIds: {first_card_id}–{last_card_id}")
     else:
         print("Vergebene CardIds: keine")
+
+    if imported_cards:
+        try:
+            file_cards = load_cards()
+        except FileNotFoundError:
+            file_cards = []
+        try:
+            file_cards.extend(imported_cards)
+            save_cards(file_cards)
+        except Exception as exc:
+            print(
+                f"\nWARNUNG: {imported_count} Karte(n) wurden in Anki angelegt, "
+                f"aber cards.json konnte nicht aktualisiert werden ({exc}). "
+                "Bitte jetzt 'Export nach cards.json' ausführen, "
+                "BEVOR synchronisiert wird."
+            )
+            raise RuntimeError(
+                f"{imported_count} Karte(n) in Anki importiert, "
+                "cards.json-Aktualisierung fehlgeschlagen."
+            ) from exc
 
 
 def main():

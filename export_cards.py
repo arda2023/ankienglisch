@@ -10,7 +10,7 @@ Notizen wird cards.json NICHT verändert.
 import requests
 
 from anki_client import deck_query, find_notes_info, preflight_check
-from cards_file import PROTECTED_TAGS, save_cards
+from cards_file import is_protected_tag, save_cards
 from config import DECK_NAME, MODEL_NAME
 
 EXPORT_FIELDS = ["CardId", "German", "English", "Alternative1", "Alternative2"]
@@ -32,7 +32,7 @@ def build_card(note):
         )
 
     card = {field: fields[field]["value"] for field in EXPORT_FIELDS}
-    card["tags"] = [tag for tag in note["tags"] if tag not in PROTECTED_TAGS]
+    card["tags"] = [tag for tag in note["tags"] if not is_protected_tag(tag)]
     return card
 
 

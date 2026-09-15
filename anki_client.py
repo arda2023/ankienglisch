@@ -4,7 +4,7 @@ anki_client.py — Gemeinsamer AnkiConnect-Client für Anki English Manager.
 Stellt invoke_anki, Suchabfragen und preflight_check() bereit.
 """
 
-from typing import List, Optional
+from typing import List
 
 import requests
 
@@ -98,6 +98,25 @@ def find_notes_info(query):
     return notes
 
 
+def notes_info_by_ids(note_ids):
+    """Gibt notesInfo für eine konkrete Liste von Notiz-IDs zurück.
+
+    Nützlich zur Verifikation nach updateNoteFields.
+    """
+    if not note_ids:
+        return []
+
+    notes = []  # type: List[dict]
+    chunk_size = 500
+    for i in range(0, len(note_ids), chunk_size):
+        chunk = note_ids[i : i + chunk_size]
+        result = invoke_anki("notesInfo", {"notes": chunk})
+        if result:
+            notes.extend(result)
+
+    return notes
+
+
 # ---------------------------------------------------------------------------
 # Vorab-Prüfung
 # ---------------------------------------------------------------------------
@@ -147,24 +166,29 @@ def preflight_check():
     # 5. Profil-Prüfung (optional)
     profile_info = ""
     if EXPECTED_PROFILE is not None:
+        active_profile = None
         try:
-            active_profile = invoke_anki("getActiveProfile") or ""  # type: str
-            if active_profile != EXPECTED_PROFILE:
-                raise RuntimeError(
-                    f"Falsches Anki-Profil aktiv: '{active_profile}' "
-                    f"(erwartet: '{EXPECTED_PROFILE}').\n"
-                    "Bitte das richtige Profil in Anki auswählen."
-                )
-            profile_info = f", Profil: {active_profile}"
+            active_profile = invoke_anki("getActiveProfile") or ""
         except RuntimeError as exc:
-            # Wenn der Fehler von der Profil-Prüfung selbst stammt, weiterwerfen
-            if "Falsches Anki-Profil" in str(exc):
+            # Wenn AnkiConnect die Aktion nicht kennt, Warnung ausgeben und
+            # Prüfung überspringen; jeden anderen Fehler weiterwerfen.
+            anki_msg = str(exc).lower()
+            if "unsupported action" in anki_msg or "unknown action" in anki_msg:
+                print(
+                    "Warnung: Profil-Prüfung nicht möglich "
+                    "(getActiveProfile wird von dieser AnkiConnect-Version nicht unterstützt)."
+                )
+            else:
                 raise
-            # Sonst: getActiveProfile wird von dieser AnkiConnect-Version nicht unterstützt
-            print(
-                "Warnung: Profil-Prüfung nicht möglich "
-                "(getActiveProfile wird von dieser AnkiConnect-Version nicht unterstützt)."
+
+        if active_profile is not None and active_profile != EXPECTED_PROFILE:
+            raise RuntimeError(
+                f"Falsches Anki-Profil aktiv: '{active_profile}' "
+                f"(erwartet: '{EXPECTED_PROFILE}').\n"
+                "Bitte das richtige Profil in Anki auswählen."
             )
+        if active_profile is not None:
+            profile_info = f", Profil: {active_profile}"
 
     print(
         f"Vorab-Prüfung OK — Deck: '{DECK_NAME}', "

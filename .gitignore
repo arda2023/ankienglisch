@@ -4,3 +4,4 @@ build/
 dist/
 *.spec
 backups/
+.cards_tmp_*
