@@ -26,6 +26,7 @@ try:
     import export_cards as export_cards_module
     import import_cards as import_cards_module
     import sync_cards as sync_cards_module
+    import setup_note_type as setup_note_type_module
 
     from config import CARDS_FILE, MAX_AUTO_DELETE, DATA_DIR
 except Exception as _startup_exc:  # noqa: BLE001
@@ -70,6 +71,8 @@ class AnkiEnglishManagerApp(ctk.CTk):
         self.add_button("cards.json öffnen", self.open_cards_json, 2, 0)
         self.add_button("Datenordner öffnen", self.open_data_folder, 2, 1)
 
+        self.add_button("Kartenlayout einrichten", self.setup_card_layout, 3, 0)
+
         self.status_box = ctk.CTkTextbox(self, wrap="word")
         self.status_box.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 12))
         
@@ -80,13 +83,19 @@ class AnkiEnglishManagerApp(ctk.CTk):
         self.status_box.configure(state="disabled")
 
     def _process_queue(self):
-        while not self.queue.empty():
-            try:
-                task = self.queue.get_nowait()
-                task()
-            except queue.Empty:
-                break
-        self.after(100, self._process_queue)
+        try:
+            while not self.queue.empty():
+                try:
+                    task = self.queue.get_nowait()
+                except queue.Empty:
+                    break
+                try:
+                    task()
+                except Exception:
+                    self.append_status(traceback.format_exc())
+                    self.set_buttons_enabled(True)
+        finally:
+            self.after(100, self._process_queue)
 
     def add_button(self, text, command, row, column):
         button = ctk.CTkButton(self.button_frame, text=text, command=command)
@@ -138,6 +147,34 @@ class AnkiEnglishManagerApp(ctk.CTk):
 
     def import_from_clipboard(self):
         self.run_task("Import aus Zwischenablage", import_cards_module.import_cards)
+
+    def setup_card_layout(self):
+        self.run_task(
+            "Kartenlayout einrichten",
+            lambda: setup_note_type_module.setup_note_type(self._confirm_layout),
+        )
+
+    def _confirm_layout(self, message):
+        """Worker wartet, während ausschließlich der Hauptthread den Dialog zeigt."""
+        done = threading.Event()
+        result = {"confirmed": False, "error": None}
+
+        def ask():
+            try:
+                result["confirmed"] = tkinter.messagebox.askyesno(
+                    "Kartenlayout einrichten", message,
+                    default=tkinter.messagebox.NO, parent=self,
+                )
+            except Exception as exc:
+                result["error"] = exc
+            finally:
+                done.set()
+
+        self.queue.put(ask)
+        done.wait()
+        if result["error"] is not None:
+            raise result["error"]
+        return result["confirmed"]
 
     def export_to_json(self):
         self.run_task("Export nach cards.json", export_cards_module.export_cards)

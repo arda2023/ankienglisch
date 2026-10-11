@@ -95,3 +95,62 @@ behalten; ältere werden gelöscht. Der Ordner wird von Git ignoriert.
 | **Synchronisieren** | Gleicht `cards.json` mit Anki ab. |
 | **cards.json öffnen** | Öffnet `cards.json` mit dem Standard-Editor. |
 | **Datenordner öffnen** | Öffnet den Datenordner (mit config.json, cards.json und backups) im Datei-Explorer/Finder. |
+
+## Kartenlayout für Chunks und Patterns
+
+**Kartenlayout einrichten** erweitert den bestehenden Notiztyp „English Active
+Speaking“ um sechs optionale Felder und ersetzt seine einzelne Kartenvorlage
+sowie das CSS. Der Notiztyp gilt sammlungsweit, auch außerhalb des konfigurierten
+Decks. Notizen und bestehender Lernfortschritt werden bei der Einrichtung nicht
+zurückgesetzt. Mehrere Kartenvorlagen führen zum Abbruch.
+
+Vor jeder Einrichtung wird im Datenordner unter `backups/` eine Sicherung
+`notetype_backup_YYYYMMDD_HHMMSS.json` mit Feldnamen, Vorlagen und CSS angelegt.
+Diese Sicherungen werden nicht automatisch gelöscht. Bei einem Fehler können
+bereits Teiländerungen erfolgt sein; die Statusmeldung nennt die Sicherung.
+
+### Erstmalige Einrichtung und vollständiger Abgleich
+
+1. **Zuerst alle Geräte synchronisieren**, insbesondere iPhone und andere PCs.
+   Nicht synchronisierte Wiederholungen auf anderen Geräten können sonst verloren gehen.
+2. Auf **einem Gerät** Anki öffnen und in der App **Kartenlayout einrichten** klicken.
+   Das Hinzufügen fehlender Felder erfordert eine Bestätigung; voreingestellt ist Nein.
+3. Danach auf diesem Gerät in **Anki** synchronisieren und **Zu AnkiWeb hochladen** wählen.
+4. Anschließend die anderen Geräte synchronisieren und, falls gefragt,
+   **Von AnkiWeb herunterladen** wählen.
+
+Der App-Button „Synchronisieren“ gleicht nur die JSON-Datei mit lokalem Anki ab;
+er ersetzt den AnkiWeb-Abgleich nicht. Wenn alle neuen Felder bereits vorhanden
+sind, benötigt eine erneute reine Layout-Aktualisierung keine Schema-Bestätigung.
+Import und Sync benötigen die neuen Felder; Export funktioniert weiterhin mit
+alten Notiztypen und warnt bei fehlenden Feldern.
+
+### Felder und Marker
+
+Die bisherigen Felder `CardId`, `German`, `English`, `Alternative1` und
+`Alternative2` bleiben erhalten. Die neuen Felder dürfen fehlen oder leer sein:
+
+| Feld | Inhalt |
+|---|---|
+| `Hint` | Kurzer deutscher Tipp bei mehrdeutigem Ausgangssatz, ohne die Antwort zu verraten. |
+| `Trap` | Typischer, vom Deutschen beeinflusster englischer Fehler. |
+| `Pattern` | Wiederverwendbares Muster, etwa `[people / someone] + [[who]] + [verb]`. |
+| `Transfer1` / `Transfer2` | Ein bis zwei kurze Beispielsätze mit demselben Muster. |
+| `Rule` | Ein kurzer deutscher Satz zur Fehlerursache. |
+
+`[[…]]` markiert den Schlüsselteil: in `English`, `Pattern`, `Transfer1` und
+`Transfer2` grün, in `Trap` rot. Einzelne `[ ]` bleiben normale Platzhalter.
+Die Marker werden unverändert gespeichert und exportiert; erst die Karte
+wandelt sie zur Anzeige um. Nicht geschlossene, verschachtelte oder leere Marker
+blockieren Import und Sync. Beim Import gibt es unverbindliche Warnungen für
+`Hint` über 60 Zeichen, `Rule` über 160 Zeichen oder ein `Pattern` ohne Marker in `English`.
+
+Leere Abschnitte verschwinden. `Transfer2` wird nur mit `Transfer1` angezeigt,
+`Alternative2` nur mit `Alternative1`. Das Layout unterstützt helle und dunkle
+Darstellung sowie schmale Handybildschirme.
+
+**Datensicherheit beim Sync:** Ein fehlender Feldschlüssel in `cards.json` lässt
+den Anki-Wert unverändert. Ein vorhandener Textfeldschlüssel mit `""` leert
+gezielt das Feld. Damit löscht eine Datei aus einer älteren App-Version die
+neuen Inhalte nicht. Neue Karten benötigen weiterhin `German` und `English`.
+Beim Import werden fehlende optionale Felder als leere Zeichenketten angelegt.

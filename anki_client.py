@@ -15,8 +15,7 @@ from config import (
     MODEL_NAME,
 )
 
-# Felder, die das Note-Type mindestens besitzen muss
-_REQUIRED_FIELDS = ["CardId", "German", "English", "Alternative1", "Alternative2"]
+from card_fields import BASE_FIELDS, NEW_FIELDS
 
 
 # ---------------------------------------------------------------------------
@@ -122,7 +121,7 @@ def notes_info_by_ids(note_ids):
 # ---------------------------------------------------------------------------
 
 
-def preflight_check():
+def preflight_check(mode="write"):
     """Prüft AnkiConnect, Deck, Note-Type, Felder und optional das Profil.
 
     Wirft RuntimeError bei einem Problem. Gibt eine Zusammenfassung aus.
@@ -156,12 +155,23 @@ def preflight_check():
     existing_fields = (
         invoke_anki("modelFieldNames", {"modelName": MODEL_NAME}) or []
     )
-    missing_fields = [f for f in _REQUIRED_FIELDS if f not in existing_fields]
+    missing_fields = [f for f in BASE_FIELDS if f not in existing_fields]
     if missing_fields:
         raise RuntimeError(
             f"Dem Note-Type '{MODEL_NAME}' fehlen folgende Felder: "
             + ", ".join(missing_fields)
         )
+
+    missing_new = [f for f in NEW_FIELDS if f not in existing_fields]
+    if missing_new and mode != "setup":
+        message = (
+            "Der Notiztyp hat das neue Kartenlayout noch nicht. "
+            "Bitte zuerst 'Kartenlayout einrichten' klicken."
+        )
+        if mode == "export":
+            print("Warnung: " + message + " Es werden nur vorhandene Felder exportiert.")
+        else:
+            raise RuntimeError(message)
 
     # 5. Profil-Prüfung (optional)
     profile_info = ""
@@ -194,3 +204,5 @@ def preflight_check():
         f"Vorab-Prüfung OK — Deck: '{DECK_NAME}', "
         f"Note-Type: '{MODEL_NAME}'{profile_info}"
     )
+
+    return existing_fields

@@ -27,12 +27,12 @@ from anki_client import (
     notes_info_by_ids,
     preflight_check,
 )
+from card_fields import ALL_FIELDS, validate_markers
 from cards_file import is_protected_tag, load_cards, normalize_tags, normalize_text
 from config import DECK_NAME, MODEL_NAME
 
 CARD_ID_FIELD = "CardId"
-SYNC_FIELDS = ["German", "English", "Alternative1", "Alternative2"]
-_ALL_FIELDS = [CARD_ID_FIELD] + SYNC_FIELDS
+
 
 
 # ---------------------------------------------------------------------------
@@ -54,7 +54,7 @@ class UpdateEntry:
     note_id: int
     card_id: str
     changed_fields: List[str]   # Namen der Felder/„tags", die sich unterscheiden
-    new_fields: Dict[str, str]  # Alle Felder (CardId + SYNC_FIELDS)
+    new_fields: Dict[str, str]  # Nur ausdrücklich im JSON vorhandene Felder
     new_tags: List[str]         # Gewünschte nicht-geschützte Tags (aus cards.json)
     anki_tags: List[str]        # Aktuelle Tags der Anki-Notiz
 
@@ -127,45 +127,16 @@ def _validate_json_cards(raw_cards):
 
         label = card_id or "?"
 
-        # --- German ---
-        try:
-            german = normalize_text(card.get("German"))
-            if not german:
-                card_errors.append(f"Karte {index} (CardId {label}): German ist leer.")
-        except ValueError as exc:
-            card_errors.append(
-                f"Karte {index} (CardId {label}): German ungültig ({exc})."
-            )
-            german = ""
-
-        # --- English ---
-        try:
-            english = normalize_text(card.get("English"))
-            if not english:
-                card_errors.append(f"Karte {index} (CardId {label}): English ist leer.")
-        except ValueError as exc:
-            card_errors.append(
-                f"Karte {index} (CardId {label}): English ungültig ({exc})."
-            )
-            english = ""
-
-        # --- Alternative1 ---
-        try:
-            alt1 = normalize_text(card.get("Alternative1"))
-        except ValueError as exc:
-            card_errors.append(
-                f"Karte {index} (CardId {label}): Alternative1 ungültig ({exc})."
-            )
-            alt1 = ""
-
-        # --- Alternative2 ---
-        try:
-            alt2 = normalize_text(card.get("Alternative2"))
-        except ValueError as exc:
-            card_errors.append(
-                f"Karte {index} (CardId {label}): Alternative2 ungültig ({exc})."
-            )
-            alt2 = ""
+        normalized = {CARD_ID_FIELD: card_id}
+        for name in ALL_FIELDS:
+            if name == CARD_ID_FIELD or name not in card:
+                continue
+            try:
+                value = normalize_text(card[name])
+                validate_markers(value)
+                normalized[name] = value
+            except ValueError as exc:
+                card_errors.append(f"Karte {index} (CardId {label}): {name} ungültig ({exc}).")
 
         # --- tags ---
         try:
@@ -179,16 +150,8 @@ def _validate_json_cards(raw_cards):
         if card_errors:
             errors.extend(card_errors)
         else:
-            validated.append(
-                {
-                    CARD_ID_FIELD: card_id,
-                    "German": german,
-                    "English": english,
-                    "Alternative1": alt1,
-                    "Alternative2": alt2,
-                    "tags": tags,
-                }
-            )
+            normalized["tags"] = tags
+            validated.append(normalized)
 
     if errors:
         return [], errors
@@ -298,7 +261,13 @@ def plan_sync() -> SyncPlan:
                     f"zurückverschieben oder aus cards.json entfernen."
                 )
             else:
-                plan.to_add.append(AddEntry(card=card))
+                missing = [name for name in ("German", "English") if not card.get(name)]
+                if missing:
+                    plan.blocking_errors.append(
+                        f"CardId {card_id}: Neue Karten benötigen {', '.join(missing)}."
+                    )
+                else:
+                    plan.to_add.append(AddEntry(card=card))
             continue
 
         note = anki_index[card_id]
@@ -307,7 +276,9 @@ def plan_sync() -> SyncPlan:
 
         # Feldvergleich (exakter String-Vergleich nach strip())
         changed = []
-        for fname in _ALL_FIELDS:
+        for fname in ALL_FIELDS:
+            if fname not in card:
+                continue
             anki_val = anki_fields.get(fname, {}).get("value", "").strip()
             json_val = card.get(fname, "").strip()
             if anki_val != json_val:
@@ -320,7 +291,7 @@ def plan_sync() -> SyncPlan:
             changed.append("tags")
 
         if changed:
-            new_fields = {fname: card.get(fname, "") for fname in _ALL_FIELDS}
+            new_fields = {fname: card[fname] for fname in ALL_FIELDS if fname in card}
             plan.to_update.append(
                 UpdateEntry(
                     note_id=note["noteId"],
@@ -398,7 +369,7 @@ def apply_sync(plan: SyncPlan) -> None:
         note = {
             "deckName": DECK_NAME,
             "modelName": MODEL_NAME,
-            "fields": {fname: card.get(fname, "") for fname in _ALL_FIELDS},
+            "fields": {fname: card.get(fname, "") for fname in ALL_FIELDS},
             "tags": card["tags"],
             "options": {"allowDuplicate": True},
         }
@@ -442,7 +413,7 @@ def apply_sync(plan: SyncPlan) -> None:
                 if note is None:
                     continue
                 saved = note.get("fields", {})
-                for fname in _ALL_FIELDS:
+                for fname in entry.new_fields:
                     actual = saved.get(fname, {}).get("value", "").strip()
                     expected = entry.new_fields.get(fname, "").strip()
                     if actual != expected:

@@ -17,11 +17,12 @@ import pyperclip
 import requests
 
 from anki_client import deck_query, find_notes_info, invoke_anki, model_query, preflight_check
+from card_fields import ALL_FIELDS, JSON_KEY_ORDER, validate_markers
 from cards_file import load_cards, normalize_tags, normalize_text, save_cards
 from config import DECK_NAME, MODEL_NAME
 
 CARD_ID_FIELD = "CardId"
-EXPORT_TEXT_FIELDS = ["German", "English", "Alternative1", "Alternative2"]
+
 
 # Matches any opening fence: ```<optional-tag>, captures content up to closing ```
 _FENCE_RE = re.compile(r"^```(\S*)\s*\n(.*?)^```", re.DOTALL | re.MULTILINE)
@@ -95,42 +96,31 @@ def validate_and_normalize_card(card, index):
     if not isinstance(card, dict):
         raise ValueError(f"Karte {index}: muss ein JSON-Objekt sein.")
 
+    normalized = {}
+    problems = []
+    for name in ALL_FIELDS:
+        if name == CARD_ID_FIELD:
+            continue  # Die App vergibt die ID selbst.
+        try:
+            value = normalize_text(card.get(name))
+            validate_markers(value)
+            if name in ("German", "English") and not value:
+                raise ValueError("Feld ist leer.")
+            normalized[name] = value
+        except ValueError as exc:
+            problems.append(f"Karte {index}: {name} ist ungültig ({exc}).")
     try:
-        german = normalize_text(card.get("German"))
+        normalized["tags"] = normalize_tags(card.get("tags"))
     except ValueError as exc:
-        raise ValueError(f"Karte {index}: German ist ungültig ({exc}).") from exc
-    if not german:
-        raise ValueError(f"Karte {index}: German ist leer.")
-
-    try:
-        english = normalize_text(card.get("English"))
-    except ValueError as exc:
-        raise ValueError(f"Karte {index}: English ist ungültig ({exc}).") from exc
-    if not english:
-        raise ValueError(f"Karte {index}: English ist leer.")
-
-    try:
-        alternative1 = normalize_text(card.get("Alternative1"))
-    except ValueError as exc:
-        raise ValueError(f"Karte {index}: Alternative1 ist ungültig ({exc}).") from exc
-
-    try:
-        alternative2 = normalize_text(card.get("Alternative2"))
-    except ValueError as exc:
-        raise ValueError(f"Karte {index}: Alternative2 ist ungültig ({exc}).") from exc
-
-    try:
-        tags = normalize_tags(card.get("tags"))
-    except ValueError as exc:
-        raise ValueError(f"Karte {index}: tags ist ungültig ({exc}).") from exc
-
-    return {
-        "German": german,
-        "English": english,
-        "Alternative1": alternative1,
-        "Alternative2": alternative2,
-        "tags": tags,
-    }
+        problems.append(f"Karte {index}: tags ist ungültig ({exc}).")
+    if problems:
+        raise ValueError("\n".join(problems))
+    for name, limit in (("Rule", 160), ("Hint", 60)):
+        if len(normalized[name]) > limit:
+            print(f"Warnung: Karte {index}: {name} ist länger als {limit} Zeichen.")
+    if normalized["Pattern"] and "[[" not in normalized["English"]:
+        print(f"Warnung: Karte {index}: Pattern ist gesetzt, aber English enthält keinen [[…]]-Marker.")
+    return normalized
 
 
 def validate_cards(cards):
@@ -264,13 +254,8 @@ def import_cards():
         note = {
             "deckName": DECK_NAME,
             "modelName": MODEL_NAME,
-            "fields": {
-                CARD_ID_FIELD: str(next_card_id),
-                "German": card["German"],
-                "English": card["English"],
-                "Alternative1": card["Alternative1"],
-                "Alternative2": card["Alternative2"],
-            },
+            "fields": {name: str(next_card_id) if name == CARD_ID_FIELD else card[name]
+                       for name in ALL_FIELDS},
             "tags": card["tags"],
             "options": {"allowDuplicate": True},
         }
@@ -287,16 +272,10 @@ def import_cards():
             )
             continue
 
-        imported_cards.append(
-            {
-                CARD_ID_FIELD: str(next_card_id),
-                "German": card["German"],
-                "English": card["English"],
-                "Alternative1": card["Alternative1"],
-                "Alternative2": card["Alternative2"],
-                "tags": card["tags"],
-            }
-        )
+        imported_cards.append({
+            name: str(next_card_id) if name == CARD_ID_FIELD else card[name]
+            for name in JSON_KEY_ORDER
+        })
         next_card_id += 1
 
     for german in skipped:

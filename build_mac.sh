@@ -9,7 +9,11 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
 fi
 
 if [ ! -d ".venv" ]; then
-    python3 -m venv .venv
+    if command -v python3.13 >/dev/null 2>&1; then
+        python3.13 -m venv .venv
+    else
+        python3 -m venv .venv
+    fi
 fi
 
 source .venv/bin/activate

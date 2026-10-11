@@ -13,7 +13,7 @@ from anki_client import deck_query, find_notes_info, preflight_check
 from cards_file import is_protected_tag, save_cards
 from config import DECK_NAME, MODEL_NAME
 
-EXPORT_FIELDS = ["CardId", "German", "English", "Alternative1", "Alternative2"]
+from card_fields import ALL_FIELDS, BASE_FIELDS, JSON_KEY_ORDER
 
 
 def card_id_sort_key(card):
@@ -23,15 +23,17 @@ def card_id_sort_key(card):
     return float("inf")
 
 
-def build_card(note):
+def build_card(note, existing_fields=None):
     fields = note["fields"]
-    missing = [field for field in EXPORT_FIELDS if field not in fields]
+    expected = BASE_FIELDS if existing_fields is None else [f for f in ALL_FIELDS if f in existing_fields]
+    missing = [field for field in expected if field not in fields]
     if missing:
         raise ValueError(
             f"Notiz {note['noteId']} hat folgende Felder nicht: {', '.join(missing)}."
         )
 
-    card = {field: fields[field]["value"] for field in EXPORT_FIELDS}
+    card = {field: fields[field]["value"] for field in JSON_KEY_ORDER
+            if field in ALL_FIELDS and field in fields}
     card["tags"] = [tag for tag in note["tags"] if not is_protected_tag(tag)]
     return card
 
@@ -62,7 +64,7 @@ def warn_about_card_ids(cards):
 
 
 def export_cards():
-    preflight_check()
+    existing_fields = preflight_check(mode="export")
 
     notes = find_notes_info(deck_query())
     if not notes:
@@ -73,7 +75,7 @@ def export_cards():
             "Deck ist (noch) leer. cards.json wurde NICHT verändert."
         )
 
-    cards = [build_card(note) for note in notes]
+    cards = [build_card(note, existing_fields) for note in notes]
 
     warn_about_card_ids(cards)
 

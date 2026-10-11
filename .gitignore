@@ -5,3 +5,4 @@ dist/
 *.spec
 backups/
 .cards_tmp_*
+.DS_Store
